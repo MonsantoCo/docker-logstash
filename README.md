@@ -1,65 +1,74 @@
 ## Logstash Dockerfile
 
-This repository contains a **Dockerfile** of [Logstash](http://www.elasticsearch.org/) for [Docker's](https://www.docker.com/) [automated build](https://registry.hub.docker.com/u/monsantoco/logstash/) published to the public [Docker Hub Registry](https://registry.hub.docker.com/).
+This is a highly configurable [Logstash](https://www.elastic.co/products/logstash) Docker image built using [Docker's automated build](https://registry.hub.docker.com/u/monsantoco/logstash/) process and published to the public [Docker Hub Registry](https://registry.hub.docker.com/).
 
-It is usually paired with an Elasticsearch instance (search database) and Kibana (as a frontend).
+It is usually paired with an [Elasticsearch](https://www.elastic.co/products/elasticsearch) instance (document database) and [Kibana](https://www.elastic.co/products/kibana) (as a frontend) to form what is known as an **ELK stack**.
 
-### Base Docker Image
 
-* [monsantoco/java:orajdk8](https://registry.hub.docker.com/u/monsantoco/java/)
-
-### Installation
-
-1. Install [Docker](https://www.docker.com/).
-
-2. Download [automated build](https://registry.hub.docker.com/u/monsantoco/logstash/) from public [Docker Hub Registry](https://registry.hub.docker.com/): 
-
-  `docker pull monsantoco/logstash`
-
-  (alternatively, you can build an image from Dockerfile:
-
-  `docker build -t="monsantoco/logstash" github.com/monsantoco/docker-logstash`)
-
-### Usage
-Logstash is set to listen for:
-- _SYSLOG_ on TCP and UDP ports **5000**
-- _SYSTEMD_ journals (such as from CoreOS) on TCP ports **5004**
-- lines of _JSON_ on TCP port **5100**
-- Log4J on TCP port **5200**
-
-You would typically link this container to an Elasticsearch container (alias **es**) that exposes port **9200**. The default `logstash.conf` file uses the Docker linked container environment placeholder **ES_PORT_9200_TCP_ADDR** when using a linked Elasticsearch container. This relies on using the default TCP port (9200) with a container alias of **es**.
-
-The environment variable `ES_CLUSTER` should be set to the name of the Elasticsearch container (must match the name used in the Elasticsearch configuration file). This can be set using the `-e` flag when executing `docker run`. The default is `es_cluster01`.
-
-You can use your own configuration file by:
-
-- Setting the `-v` flag when executing `docker run` to mount your own configuration file via the exposed `/opt/logstash/conf` volume.
-
-- Overriding the **LOGSTASH_CFG_URI** environment variable which is set using the `-e` flag when executing `docker run` will download, via wget, your configuration file.
-
-To run logstash and connect to a linked Elasticsearch container (which should ideally be started first):
+### How to use this image
+To start a basic container, specify `--env LS_ES_CONN_STR=[hostname/IP]:[port]` (separate multiple values with comma, ',') for a remote Elasticsearch instance. This will be applied to the default `logstash.conf` file. For example:
 
 ```sh
-docker run -d --link elasticsearch:es -p 5000:5000 -p 5000:5000/udp -p 5004:5004 -p 5100:5100 -p 5200:5200 --name logstash monsantoco/logstash
+docker run -d --name --publish 5000:5000 --env LS_ES_CONN_STR=elasticsearch.local:9200 monsantoco/logstash
 ```
 
-You can also use a shared storage volume to load in and use your own **logstash.conf** file:
+> Note that for connecting to an Elasticsearch cluster you should be using a proxy node or load balancer, but you can use `--env LS_ES_CONN_STR=esnode1:9200,esnode2:9200,esnode3:9200` to connect to multiple ES nodes as well.
+
+The included `logstash.conf` file is capable of processing syslog, logstash-forwarder, systemd journal, Logspout Docker logs, and Log4j (just pass-through) content. It is highly recommended that you use your own file for best processing however.
+
+### Additional Configuration
+The image exposes a few ports required by the default `logstash.conf` file, namely:
+
+* 5000 (tcp/udp) - Used for syslog
+* 5002 (tcp) - Used for [Logstash-Forwarder](https://github.com/elastic/logstash-forwarder)
+* 5004 (tcp) - Used for systemd journal
+* 5006 (tcp) - Used for [Logspout Docker logs](https://github.com/gliderlabs/logspout)
+* 4560 (tcp) - Used for Log4J
+
+These exposed ports should be used in your own file though the purpose can of course be different. You can use your own configuration via [command line](https://www.elastic.co/guide/en/logstash/current/_command_line_flags.html) `-e CONFIG_STRING`, a volume mount (--volume $PWD/conf:/etc/logstash/conf.d) or download URL (--env LS_CFG_URL=http://pastebin.com/4EsKPGNF). Local volume mounted `logstash.conf` example:
 
 ```sh
-docker run -d --link elasticsearch:es -p 5000:5000 -p 5000:5000/udp -p 5004:5004 -p 5100:5100 -p 5200:5200 -v /tmp/logstash.conf:/etc/logstash/conf.d/logstash.conf --name logstash monsantoco/logstash
+docker run -d \
+  --publish 5000:5000 \
+  --publish 5000:5000/udp \
+  --publish 5002:5002 \
+  --publish 5004:5004 \
+  --publish 5006:5006 \
+  --publish 4560:4560 \
+  --volume /tmp:/etc/logstash/conf.d \
+  monsantoco/logstash
 ```
 
-### Validation Testing
-To test the setup you will need to send some data to the Logstash container. This can be done as shown below:
+Remote Logstash configuration file download example:
 
 ```sh
-echo '{"@timestamp": "2015-01-07T20:11:45.000Z","@version": "1","count": 2048,"average": 1523.33,"host": "elasticsearch.com"}' | nc -w 1  <container_host> 5000
+docker run -d \
+  --publish 5000:5000 \
+  --publish 5000:5000/udp \
+  --publish 5002:5002 \
+  --publish 5004:5004 \
+  --publish 5006:5006 \
+  --publish 4560:4560 \
+  --env LS_CFG_URL=http://pastebin.com/4EsKPGNF \
+  monsantoco/logstash
 ```
 
-To verify the indexes have been created in your Elasticsearch instance:
+Environment variables are accepted as a means to provide further configuration by reading those starting with `LS_`. Any matching variables will be used as substitution variables within Logstash's configuration file, `logstash.conf' by:
+
+  1. Removing the `LS_` prefix
+  2. Substituting the value within the configuration file (`logstash.conf`)
+
+The environment variable substitution also works for your configuration file (host mounted or remote download) as well, for example:
 
 ```sh
-curl -s http://<container_host>:9200/_status?pretty=true
+docker run -d \
+  --publish 5000:5000 \
+  --env LS_CFG_URL=http://pastebin.com/4EsKPGNF \
+  --env LS_ES_CONN_STR=elasticsearch.local:9200
+  monsantoco/logstash
 ```
 
-The data should also be available in your Kibana dashboard. Ensure the same date/time period is used when searching as was done in the sample commands.
+> Note that the container must be able to access the URL provided, otherwise it will exit with a failure code.
+
+### A note about Logstash Forwarder
+This image can use either existing SSL keys and certificates, or create new ones for using Logstash-Forwarder. The latter is always done whenever no files are found in the expected location, `/etc/logstash/ssl`. This is an exposed volume so you can do a host volume mount to use your own files. You can also download your own remote files using the `LSF_CERT_URL` (certificate) and `LSF_KEY_URL` (key) environment variables. The container must be able to access all URLs provided, otherwise it will exit with a failure code.

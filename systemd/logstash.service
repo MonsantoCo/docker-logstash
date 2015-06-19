@@ -1,0 +1,36 @@
+[Unit]
+Description=Logstash
+
+# Requirements
+Requires=docker.service
+
+# Dependency ordering and binding
+After=docker.service
+
+[Service]
+TimeoutStartSec=10m
+Restart=on-failure
+RestartSec=5s
+
+ExecStartPre=-/usr/bin/docker kill %p
+ExecStartPre=/usr/bin/docker pull monsantoco/logstash
+
+ExecStart=/bin/bash -c "\
+  /usr/bin/docker run --name %p \
+  --publish 5000:5000 \
+  --publish 5000:5000/udp \
+  --publish 5002:5002 \
+  --publish 5004:5004 \
+  --publish 5006:5006 \
+  --publish 4560:4560 \
+  --env LS_ES_CONN_STR=elasticsearch.local:9200 \
+  monsantoco/logstash"
+
+ExecStop=/usr/bin/docker stop %p
+ExecStop=-/usr/bin/docker rm %p
+
+[Install]
+WantedBy=multi-user.target
+
+[X-Fleet]
+Conflicts=%p.service
