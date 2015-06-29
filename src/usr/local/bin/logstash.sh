@@ -14,20 +14,6 @@ LS_CFG_FILE=${LS_CFG_FILE:-"/etc/logstash/conf.d/logstash.conf"}
 LS_SSL_CERTIFICATE=${LS_SSL_CERTIFICATE:-"/etc/logstash/ssl/logstash-forwarder.crt"}
 LS_SSL_KEY=${LS_SSL_KEY:-"/etc/logstash/ssl/logstash-forwarder.key"}
 
-# Elasticsearch setup
-LS_CLUSTER=${LS_CLUSTER:-"es01"}
-
-# Use linked ES container if exist, otherwise ES_HOST if defined, else fall back to localhost
-ES_HOST=${ES_HOST:-"localhost"}
-ES_HOST=${ES_PORT_9200_TCP_ADDR:-$ES_HOST}
-
-# Use linked ES container if exist, otherwise ES_PORT if defined, else fall back to 9200
-ES_PORT=${ES_PORT:-"9200"}
-ES_PORT=${ES_PORT_9200_TCP_PORT:-$ES_PORT}
-
-REDIS_HOST=${REDIS_HOST:-"localhost"}
-REDIS_PORT=${REDIS_PORT:-"6379"}
-
 createLSKey() {
 # Create a new SSL certificate for Logstash-Forwarder if needed
   if [ ! -f "$LS_SSL_KEY" ]; then
