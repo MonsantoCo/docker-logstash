@@ -5,7 +5,7 @@
 FROM alpine:latest
 
 # Setup environment
-ENV LS_VERSION 1.5.1
+ENV LS_VERSION 1.5.2
 ENV LS_HOME /opt/logstash
 ENV LS_CFG_DIR /etc/logstash
 ENV LS_USER logstash
