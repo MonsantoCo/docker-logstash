@@ -25,7 +25,7 @@ createLSKey() {
 getLSConfig() {
   # Download the config file, if given a URL
   if [ ! -z "$LS_CFG_URL" ]; then
-    echo "[logstash] Downloading logstash config file from ${LS_CFG_URL}"
+    echo "[LS] Downloading logstash config file from ${LS_CFG_URL}"
     curl --location --silent --insecure --output ${LS_CFG_FILE} ${LS_CFG_URL}
     if [ $? -ne 0 ]; then
       echo "[LS] Failed to download ${LS_CFG_URL} exiting."
