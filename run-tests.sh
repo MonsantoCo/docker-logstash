@@ -39,7 +39,12 @@ for VERSION in "${versions[@]}"; do
   echo "${green}[CI] -----------------------------------------------"
   echo "${green}[CI] Running tests for: ${DOCKER_IMAGE}:${VERSION}${reset}"
   export VERSION
-  bats tests
+  bats tests/common
+  if [ "$VERSION" == "1.5.3" ]; then
+    bats tests/1.5.3
+  else
+    bats tests/1.5.x
+  fi
   [ $? -ne 0 ] && status=1
 done
 
