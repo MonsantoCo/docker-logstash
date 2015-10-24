@@ -12,7 +12,7 @@
 
 @test "Validate default Logstash shipper config file" {
   run docker run -t --rm --name ${DOCKER_IMAGE} --env LS_CFG_FILE="/etc/logstash/conf.d/logstash-shipper.conf" ${DOCKER_IMAGE}:${VERSION} --version
-  [[ ${lines[2]} =~ "Configuration OK" ]]
+  [[ ${lines[1]} =~ "Configuration OK" ]]
 }
 
 @test "Validate default Logstash indexer config file" {
