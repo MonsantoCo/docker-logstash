@@ -33,6 +33,6 @@
   url="http://${DOCKER_HOST_IP}:${port}"
   run bash -c 'echo '{"@timestamp": "2015-06-09T09:37:45.000Z","@version": "1","count": 2048,"average": 1523.33,"host": "logstash.com"}' | nc -w 1 $host:$port'
   [ $status -eq 0 ]
-  docker kill elasticsearch logstash
+  docker stop elasticsearch logstash
   docker rm -f elasticsearch logstash
 }
